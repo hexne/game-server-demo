@@ -3,10 +3,10 @@
 * @Date   : 2026/04/23 14:30:19
 ********************************************************************************/
 module;
-#include <string>
 #include <sys/epoll.h>
 #include <unistd.h>
 export module net;
+import std;
 
 class Connect {
     int fd_{};
