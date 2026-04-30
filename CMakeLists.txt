@@ -1,7 +1,6 @@
-cmake_minimum_required(VERSION 3.30.0)
+cmake_minimum_required(VERSION 4.3.0)
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_SUPPRESS_DEVELOPER_WARNINGS 1 CACHE INTERNAL "")
-
 if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.30.0 AND CMAKE_VERSION VERSION_LESS_EQUAL 3.31.7)
     set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "0e5b6991-d74f-4b3d-a41c-cf096e0b2508")
 elseif(CMAKE_VERSION EQUAL 3.31.8)
@@ -13,16 +12,14 @@ elseif(CMAKE_VERSION VERSION_GREATER_EQUAL 4.0.3 AND CMAKE_VERSION VERSION_LESS 
 else()
     set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "451f2fe2-a8a2-47c3-bc32-94786d8fc91b")
 endif()
-
 set(CMAKE_CXX_MODULE_STD 1)
 
 project(GameServerDevDemo)
 
 set(CMAKE_CXX_STANDARD 26)
-add_subdirectory(../modforge modforge)
+add_subdirectory(src)
 
-
-add_executable(GameServerDevDemo main.cpp)
+add_executable(GameServerDevDemo src/main.cpp)
 target_link_libraries(GameServerDevDemo PRIVATE
-        modforge
+        module
 )
