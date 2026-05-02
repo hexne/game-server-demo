@@ -5,14 +5,3 @@
 
 module;
 export module database;
-
-
-export class Redis {
-
-
-};
-
-export class Database {
-
-
-};

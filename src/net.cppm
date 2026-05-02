@@ -77,6 +77,8 @@ export class TCP {
     Address to_addr_{};
 public:
     explicit TCP(const Address& addr) : to_addr_(addr) {  }
+    // @TODO
+    TCP() = default;
 
     TCP(const TCP &) = delete;
     TCP& operator = (const TCP &) = delete;
@@ -100,6 +102,8 @@ export class UDP {
     Address to_addr_{};
 public:
     explicit UDP(const Address& addr) : to_addr_(addr) {  }
+    // @TODO
+    UDP() = default;
 
     UDP(const UDP &) = delete;
     UDP& operator = (const UDP&) = delete;
