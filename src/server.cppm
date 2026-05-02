@@ -10,16 +10,16 @@ import net;
 import std;
 
 class Server {
-    std::vector<Socket> clients_;
-    Socket listen_socket_;
+    std::vector<TCP> clients_;
+    TCP listen_socket_;
 public:
     Server() {
-        listen_socket_ = Socket(Address{"0.0.0.0", 10086});
+        listen_socket_ = TCP(Address{"0.0.0.0", 10086});
     }
     void accept() {
         auto new_client = listen_socket_.accept();
         if (new_client)
-            clients_.push_back(new_client.value());
+            clients_.emplace_back(std::move(new_client.value()));
     }
 
 };
