@@ -7,6 +7,8 @@ module;
 export module client;
 import log;
 import std;
+import net;
+import user;
 
 class Client {
 
@@ -16,6 +18,8 @@ public:
 
 export void client_main() {
     Log().push_log("Client start");
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
     // Client client;
     //
     // while (true) {
