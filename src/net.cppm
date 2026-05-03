@@ -164,7 +164,6 @@ public:
 
     }
     auto send(std::span<char> span) {
-        std::cout << span.size() << std::endl;
         return ::send(fd_, span.data(), span.size(), 0);
     }
 

@@ -14,6 +14,8 @@ import net;
 import database;
 import std;
 
+Database db("root", "arch", "game");
+
 export class Server {
 public:
 
@@ -27,21 +29,36 @@ void split_message(std::string_view msg) {
 
     // login
     if (type == "000000") {
+        Log().push_log("type is login");
         auto pos = msg.find(':');
         if (pos == std::string::npos)
             throw std::invalid_argument("invalid server type");
-        std::string number(6, pos);
-        // + 1 跳过:
+        std::string number(msg.begin() + 6, msg.begin() + pos);
+        // + 1 跳过 ':'
         std::string password_hash(msg.begin() + pos + 1, msg.end());
-        std::cout << "number" << std::endl;
+        std::cout << number << std::endl;
         std::cout << password_hash << std::endl;
+
+        auto res = db->select("password_hash", "id", "name", "number", "create_time")
+                     .from("users")
+                     .where("number = '{}'", number)
+                     .exec();
+        for (auto user : res) {
+            if (user[0] == password_hash) {
+                std::cout << "pass is true" << std::endl;
+            }
+            else {
+                std::cout << "pass is false" << std::endl;
+            }
+
+        }
+
     }
 
 
 }
 export void server_main() {
     Log().push_log("Server start");
-    Database db("root", "arch", "game");
     Socket socket(Address {"0.0.0.0", 8080});
 
     socket.bind();
