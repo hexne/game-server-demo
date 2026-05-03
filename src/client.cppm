@@ -29,7 +29,7 @@ export void client_main() {
 
     socket.connect();
 
-    char msg[] = "Hello Echo Server!";
+    char msg[] = "num10";
     socket.send(std::span<char>{msg});
 
     char buf[1024];

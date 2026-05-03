@@ -21,7 +21,7 @@ public:
 
 
 export void server_main() {
-
+    Database db("root", "arch", "game");
     Socket socket(Address {"0.0.0.0", 8080});
 
     socket.bind();
@@ -33,6 +33,18 @@ export void server_main() {
         auto n = client.recv(std::span<char>(buf));
         if (n <= 0)
             break;
-        client.send(std::span<char>(buf));
+        std::string number(buf, n-1);
+        std::cout << number << std::endl;
+        auto res = db->select("id", "name")
+                     .from("users")
+                     .where("number = '{}'", number)
+                     .exec();
+
+        std::string send_str;
+        for (auto user : res) {
+            send_str = std::format("{}:{}", user[0], user[1]);
+        }
+
+        client.send(std::span<char>(send_str.data(), send_str.size()));
     }
 }
