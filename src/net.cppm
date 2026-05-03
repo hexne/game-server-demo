@@ -8,6 +8,7 @@ module;
 #include <fcntl.h>
 #include <unistd.h>
 #include <cstring>
+#include <openssl/lhash.h>
 #include <sys/epoll.h>
 export module net;
 import std;
@@ -18,6 +19,8 @@ public:
     auto span() {
         return std::span { buf_.data(), buf_.size() };
     }
+
+
 };
 
 export class Address {
@@ -33,8 +36,6 @@ public:
 
     // 从 IP + 端口构造
     Address(const std::string_view ip, const int port) {
-        std::memset(&addr_, 0, sizeof(addr_));   // ← 必须加
-
         addr_.sin_family = AF_INET;
         addr_.sin_port = htons(port);
 
@@ -72,5 +73,100 @@ public:
     socklen_t size() const { return sizeof(sockaddr_in); }
 };
 
+export class Socket {
+    Address addr_{};
+    int fd_{};
+public:
+    Socket() {
+        fd_ = socket(AF_INET, SOCK_STREAM, 0);
+    }
+    explicit Socket(const int fd) : fd_(fd) {  }
+    explicit Socket(const Address &addr) : addr_(addr) {
+        fd_ = socket(AF_INET, SOCK_STREAM, 0);
+    }
+    auto send(std::span<char> span) {
+        return ::send(fd_, span.data(), span.size(), 0);
+    }
+    auto connect() {
+        return ::connect(fd_, addr_.socket_address(), addr_.size());
+    }
+    auto recv(std::span<char> span) {
+        return ::recv(fd_, span.data(), span.size(), 0);
+    }
+    auto bind() {
+        return ::bind(fd_, addr_.socket_address(), addr_.size());
+    }
+    auto listen() {
+        return ::listen(fd_, 5);
+    }
+    auto accept() {
+        auto fd = ::accept(fd_, nullptr, nullptr);
+        if (fd >= 0)
+            return Socket(fd);
+        std::string error_string;
+
+        switch (errno) {
+        case EAGAIN: // EWOULDBLOCK == EAGAIN
+            error_string = "Resource temporarily unavailable (EAGAIN/EWOULDBLOCK)";
+            break;
+
+        case EINTR:
+            error_string = "System call interrupted by signal (EINTR)";
+            break;
+
+        case EBADF:
+            error_string = "Invalid file descriptor (EBADF)";
+            break;
+
+        case ENOTSOCK:
+            error_string = "File descriptor is not a socket (ENOTSOCK)";
+            break;
+
+        case EINVAL:
+            error_string = "Invalid argument or socket not in listening state (EINVAL)";
+            break;
+
+        case EMFILE:
+            error_string = "Process file descriptor limit reached (EMFILE)";
+            break;
+
+        case ENFILE:
+            error_string = "System-wide file descriptor limit reached (ENFILE)";
+            break;
+
+        case ECONNABORTED:
+            error_string = "Connection aborted before accept() (ECONNABORTED)";
+            break;
+
+        case EFAULT:
+            error_string = "Invalid memory address passed to system call (EFAULT)";
+            break;
+
+        case ENOBUFS:
+        case ENOMEM:
+            error_string = "Insufficient kernel memory (ENOBUFS/ENOMEM)";
+            break;
+
+        case EPERM:
+            error_string = "Operation not permitted (EPERM)";
+            break;
+
+        case EOPNOTSUPP:
+            error_string = "Operation not supported on this socket (EOPNOTSUPP)";
+            break;
+
+        default:
+            error_string = std::string("Unknown error: ") + std::strerror(errno);
+            break;
+        }
+
+        throw std::runtime_error(error_string);
+
+
+    }
+    ~Socket() {
+        ::close(fd_);
+    }
+};
 
 export using ::ssize_t;

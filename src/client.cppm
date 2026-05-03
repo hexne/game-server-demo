@@ -21,25 +21,27 @@ public:
 };
 
 export void client_main() {
-    sleep(1); // 等 server 启动
+    sleep(1);
 
-    int fd = socket(AF_INET, SOCK_STREAM, 0);
+    // 发送到这个地址
+    // int fd = socket(AF_INET, SOCK_STREAM, 0);
 
-    struct sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(8080);
-    inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
+    Address addr("127.0.0.1", 8080);
 
-    connect(fd, (struct sockaddr*)&addr, sizeof(addr));
+    Socket socket(addr);
 
-    const char* msg = "Hello Echo Server!";
-    send(fd, msg, strlen(msg), 0);
+    // connect(fd, addr.socket_address(), addr.size());
+    socket.connect();
+
+    char msg[] = "Hello Echo Server!";
+    // Buffer buf;
+    socket.send(std::span<char>{msg});
+    // send(fd, msg, strlen(msg), 0);
 
     char buf[1024];
-    ssize_t n = recv(fd, buf, sizeof(buf), 0);
+    ssize_t n = socket.recv(std::span<char>{buf});
     if (n > 0) {
         printf("Client received: %.*s\n", (int)n, buf);
     }
 
-    close(fd);
 }
