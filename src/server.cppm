@@ -8,6 +8,7 @@ module;
 #include <unistd.h>
 #include <string.h>
 #include <stdio.h>
+#include <sw/redis++/redis++.h>
 export module server;
 import log;
 import net;
@@ -15,6 +16,7 @@ import database;
 import std;
 
 Database db("root", "arch", "game");
+sw::redis::Redis redis("tcp://127.0.0.1:6379");
 
 export class Server {
 public:
@@ -54,6 +56,7 @@ void split_message(std::string_view msg, Socket &socket) {
         else {
             auto send_msg = std::format("{}:{}:{}:{}", res[1], res[2], res[3], res[4]);
             socket.send(std::span{send_msg.data(), send_msg.size()});
+            redis.sadd("online_users", res[1]);
         }
         // for (auto user : res) {
         //     if (user[0] == password_hash) {
@@ -72,6 +75,9 @@ void split_message(std::string_view msg, Socket &socket) {
 export void server_main() {
     Log().push_log("Server start");
     Socket socket(Address {"0.0.0.0", 8080});
+
+
+    redis.set("hello", "world");
 
     socket.bind();
     socket.listen();
