@@ -68,4 +68,6 @@ target_link_libraries(module PRIVATE
         ${MARIADB_LIBRARY}
         ${HIREDIS_LIBRARY}
         ${REDIS_PLUS_PLUS_LIBRARY}
+        -lcrypto
+        -lssl
 )
