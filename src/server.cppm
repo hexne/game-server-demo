@@ -28,12 +28,12 @@ export void server_main() {
     socket.listen();
     auto client = socket.accept();
 
-    char buf[1024];
+    Buffer buf;
     while (true) {
-        auto n = client.recv(std::span<char>(buf));
+        auto n = client.recv(buf.span());
         if (n <= 0)
             break;
-        std::string number(buf, n-1);
+        std::string number(buf);
         std::cout << number << std::endl;
         auto res = db->select("id", "name")
                      .from("users")

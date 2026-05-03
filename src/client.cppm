@@ -20,6 +20,11 @@ public:
 
 };
 
+bool check_user_password(std::string_view number, std::string_view password) {
+
+
+}
+
 export void client_main() {
     sleep(1);
 
@@ -29,13 +34,13 @@ export void client_main() {
 
     socket.connect();
 
-    char msg[] = "num10";
-    socket.send(std::span<char>{msg});
+    socket.send("num10");
 
-    char buf[1024];
-    ssize_t n = socket.recv(std::span<char>{buf});
-    if (n > 0) {
-        printf("Client received: %.*s\n", (int)n, buf);
+    Buffer buf;
+    socket.recv(buf.span());
+    if (buf.span().size() > 0) {
+        std::string ret_info = buf;
+        std::cout << ret_info << std::endl;
     }
 
 }

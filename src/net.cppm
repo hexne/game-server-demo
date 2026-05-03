@@ -14,13 +14,18 @@ export module net;
 import std;
 export template <size_t N = 1024>
 class Buffer {
-    std::array<char, N> buf_{};
+    char buf_[N]{};
+    std::span<char> span_ = {buf_, N};
 public:
-    auto span() {
-        return std::span { buf_.data(), buf_.size() };
+    auto& span() {
+        return span_;
     }
-
-
+    auto size() {
+        return span_.size();
+    }
+    operator std::string() {
+        return std::string(span_.begin(), span_.end());
+    }
 };
 
 export class Address {
@@ -84,14 +89,8 @@ public:
     explicit Socket(const Address &addr) : addr_(addr) {
         fd_ = socket(AF_INET, SOCK_STREAM, 0);
     }
-    auto send(std::span<char> span) {
-        return ::send(fd_, span.data(), span.size(), 0);
-    }
     auto connect() {
         return ::connect(fd_, addr_.socket_address(), addr_.size());
-    }
-    auto recv(std::span<char> span) {
-        return ::recv(fd_, span.data(), span.size(), 0);
     }
     auto bind() {
         return ::bind(fd_, addr_.socket_address(), addr_.size());
@@ -164,6 +163,21 @@ public:
 
 
     }
+    auto send(std::span<char> span) {
+        return ::send(fd_, span.data(), span.size(), 0);
+    }
+    auto send(std::string_view str) {
+        return ::send(fd_, str.data(), str.size(), 0);
+    }
+    auto recv(std::span<char>& span) {
+        int n = ::recv(fd_, span.data(), span.size(), 0);
+        span = {span.data(), static_cast<size_t>(n)};
+        return n;
+    }
+    auto recv(char buf[]) {
+        return ::recv(fd_, buf, sizeof(buf), 0);
+    }
+
     ~Socket() {
         ::close(fd_);
     }
