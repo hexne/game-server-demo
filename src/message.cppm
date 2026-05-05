@@ -21,9 +21,9 @@ export namespace header {
         auto v = static_cast<header_type>(type);
         std::memcpy(buf, &v, sizeof(v));
     }
-    type read(char *buf) {
+    type read(std::span<char> buf) {
         header_type v;
-        std::memcpy(&v, buf, sizeof(v));
+        std::memcpy(&v, buf.data(), sizeof(v));
         return static_cast<type>(v);
     }
 
@@ -35,7 +35,7 @@ export namespace header {
 
 export namespace message {
 
-    std::size_t write(char *buf, header::type type, std::string_view msg) {
+    std::size_t write(char *buf, header::type type, std::span<char> msg) {
         std::uint32_t v = static_cast<std::uint32_t>(type);
         std::memcpy(buf, &v, sizeof(v));
         std::memcpy(buf + sizeof(v), msg.data(), msg.size());

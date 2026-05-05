@@ -19,7 +19,7 @@ public:
 
 };
 
-std::optional<User> check_user_password(std::string_view number, std::string_view password) {
+std::optional<User> check_user_password(const std::string& number, const std::string& password) {
 
     auto hash = sha256(password);
     char msg[1024]{};
@@ -27,7 +27,8 @@ std::optional<User> check_user_password(std::string_view number, std::string_vie
 
     Socket socket(Address{"127.0.0.1", 8080});
     socket.connect();
-    message::write(msg, header::type::login, std::format("{}:{}", number, hash));
+    auto login_msg = std::format("{}:{}", number, hash);
+    message::write(msg, header::type::login, std::span{login_msg.data(), login_msg.size()});
     socket.send(msg);
     char buf[1024]{};
     int n = socket.recv(std::span{buf, sizeof(buf)});

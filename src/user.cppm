@@ -9,7 +9,7 @@ export module user;
 import std;
 import net;
 
-export std::string sha256(std::string_view input) {
+export std::string sha256(const std::string& input) {
     unsigned char hash[SHA256_DIGEST_LENGTH];
     SHA256(
         reinterpret_cast<const unsigned char*>(input.data()),
@@ -40,7 +40,7 @@ export class User {
     std::string create_time_{};
 public:
     User() = default;
-    User(std::string id, std::string_view name, std::string_view number, std::string_view create_time)
+    User(std::string id, const std::string& name, const std::string& number, const std::string& create_time)
         : id_{std::move(std::stoi(id))}, name_{name}, number_{number}, create_time_{create_time} {  }
 
 };

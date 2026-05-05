@@ -20,13 +20,13 @@ public:
 };
 
 
-void login(std::string_view msg, Socket &socket) {
-    auto pos = msg.find(':');
-    if (pos == std::string::npos)
+void login(std::span<char> msg, Socket &socket) {
+    auto pos = std::ranges::find(msg, ':');
+    if (pos == msg.end())
         throw std::invalid_argument("invalid server type");
-    std::string number(msg.begin(), msg.begin() + pos);
+    std::string number(msg.begin(), pos);
     // + 1 跳过 ':'
-    std::string password_hash(msg.begin() + pos + 1, msg.end());
+    std::string password_hash(pos + 1, msg.end());
 
     auto res = db->select("password_hash", "id", "name", "number", "create_time")
                  .from("users")
@@ -44,16 +44,16 @@ void login(std::string_view msg, Socket &socket) {
     }
 }
 
-std::map<header::type, std::function<void(std::string_view, Socket&)>> events {
+std::map<header::type, std::function<void(std::span<char>, Socket&)>> events {
     { header::type::login, login }
 };
 
 // 分发事件，根据事件不同调用不同的函数
-void distribute(std::string_view msg, Socket &socket) {
-    auto type = header::read((char *)msg.data());
+void distribute(std::span<char> msg, Socket &socket) {
+    auto type = header::read(msg);
     if (!events.contains(type))
         throw std::invalid_argument("invalid server type");
-    events[type](msg.begin() + header::header_size(), socket);
+    events[type](msg.subspan(header::header_size()), socket);
 }
 
 export void server_main() {
@@ -72,6 +72,6 @@ export void server_main() {
         auto n = client.recv(buf);
         if (n <= 0)
             break;
-        distribute(buf, client);
+        distribute(std::span{buf, static_cast<std::size_t>(n)}, client);
     }
 }

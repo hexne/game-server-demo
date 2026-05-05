@@ -115,15 +115,15 @@ public:
     }
 
     // FROM
-    SQLBuilder& from(std::string_view table) {
+    SQLBuilder& from(const std::string& table) {
         from_ = table;
         return *this;
     }
 
     // WHERE
     template <class... Args>
-    SQLBuilder& where(std::string_view fmt, Args&&... args) {
-        auto cond = std::vformat(fmt, std::make_format_args(args...));
+    SQLBuilder& where(const std::string& fmt, Args&&... args) {
+        auto cond = std::vformat(fmt.c_str(), std::make_format_args(args...));
         wheres_.push_back(std::move(cond));
         return *this;
     }
@@ -224,4 +224,3 @@ public:
 Result SQLBuilder::exec() {
     return db_->query(build());
 }
-

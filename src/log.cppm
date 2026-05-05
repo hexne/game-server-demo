@@ -32,7 +32,7 @@ public:
     log() {
         thread_ = std::jthread(&log::run, this);
     }
-    void push_log(std::string_view msg, bool info = false, const std::source_location& loc = std::source_location::current()) {
+    void push_log(const std::string& msg, bool info = false, const std::source_location& loc = std::source_location::current()) {
 
         auto now = LocalTime::now();
         // [time] [file:line] :
@@ -62,4 +62,3 @@ export log& Log() {
     static log ret;
     return ret;
 }
-

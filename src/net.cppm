@@ -26,11 +26,11 @@ public:
 
 
     // 从 IP + 端口构造
-    Address(const std::string_view ip, const int port) {
+    Address(const std::string& ip, const int port) {
         addr_.sin_family = AF_INET;
         addr_.sin_port = htons(port);
 
-        if (::inet_pton(AF_INET, ip.data(), &addr_.sin_addr) <= 0) {
+        if (::inet_pton(AF_INET, ip.c_str(), &addr_.sin_addr) <= 0) {
             throw std::runtime_error("invalid IPv4 address");
         }
     }
