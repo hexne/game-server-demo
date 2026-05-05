@@ -12,21 +12,7 @@ module;
 #include <sys/epoll.h>
 export module net;
 import std;
-export template <size_t N = 1024>
-class Buffer {
-    char buf_[N]{};
-    std::span<char> span_ = {buf_, N};
-public:
-    auto& span() {
-        return span_;
-    }
-    auto size() {
-        return span_.size();
-    }
-    operator std::string() {
-        return std::string(span_.begin(), span_.end());
-    }
-};
+
 
 export class Address {
     sockaddr_in addr_{};
@@ -166,20 +152,10 @@ public:
     auto send(std::span<char> span) {
         return ::send(fd_, span.data(), span.size(), 0);
     }
-
-    auto recv(std::span<char> &&span) {
+    auto recv(std::span<char> span) {
         int n = ::recv(fd_, span.data(), span.size(), 0);
         return n;
     }
-    auto recv(std::span<char>& span) {
-        int n = ::recv(fd_, span.data(), span.size(), 0);
-        span = {span.data(), static_cast<size_t>(n)};
-        return n;
-    }
-    // auto recv(char buf[]) {
-    //     return ::recv(fd_, buf, sizeof(buf), 0);
-    // }
-
     ~Socket() {
         ::close(fd_);
     }

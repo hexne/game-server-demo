@@ -67,11 +67,11 @@ export void server_main() {
     socket.listen();
     auto client = socket.accept();
 
-    Buffer buf;
+    char buf[1024];
     while (true) {
-        auto n = client.recv(buf.span());
+        auto n = client.recv(buf);
         if (n <= 0)
             break;
-        distribute(buf.span().data(), client);
+        distribute(buf, client);
     }
 }
