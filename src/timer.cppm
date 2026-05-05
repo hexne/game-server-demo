@@ -2,7 +2,7 @@
  * @Author : hexne
  * @Date   : 2025/04/18
 ********************************************************************************/
-export module modforge.timer;
+export module timer;
 import std;
 import time;
 

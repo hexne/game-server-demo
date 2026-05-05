@@ -13,20 +13,19 @@ import std.compat;
 import net;
 import user;
 import message;
+import timer;
 
 export class Client {
 public:
 
 };
 
-std::optional<User> check_user_password(const std::string& number, const std::string& password) {
+std::optional<User> check_user_password(const std::string& number, const std::string& password, TCP &socket) {
 
     auto hash = sha256(password);
     char msg[1024]{};
     header::write(msg, header::type::login);
 
-    TCP socket(Address{"127.0.0.1", 8080});
-    socket.connect();
     auto login_msg = std::format("{}:{}", number, hash);
     auto msg_size = message::write(msg, header::type::login, std::span{login_msg.data(), login_msg.size()});
     socket.send(std::span{msg, msg_size});
@@ -53,17 +52,34 @@ std::optional<User> check_user_password(const std::string& number, const std::st
     return user;
 }
 
+
+void send_heart(TCP &tcp) {
+    char buf[header::header_size()]{};
+    auto size = message::write(buf, header::type::heart, {});
+    tcp.send(std::span{buf, size});
+}
+
+
 export void client_main() {
     sleep(1);
     Log().push_log("Client start");
 
+    TCP socket(Address{"127.0.0.1", 8080});
+    socket.connect();
+    Timer timer;
+
     //@TODO 用户登录界面填写账号和密码
-    auto user = check_user_password("num10", "pass10");
+    auto user = check_user_password("num10", "pass10", socket);
     if (!user) {
         Log().push_log("login error");
     }
     else {
         Log().push_log("login ok");
+        timer.add_repeat_task([&socket] {
+            send_heart(socket);
+        }, std::chrono::seconds{1});
     }
+    while (true)
+        ;
 
 }

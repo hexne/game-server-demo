@@ -44,8 +44,12 @@ void login(std::span<char> msg, TCP &socket) {
     }
 }
 
+void heart(std::span<char> msg, TCP &socket) {
+    Log().push_log("Server get heart");
+}
 std::map<header::type, std::function<void(std::span<char>, TCP&)>> events {
-    { header::type::login, login }
+    { header::type::login, login },
+    { header::type::heart, heart }
 };
 
 // 分发事件，根据事件不同调用不同的函数
