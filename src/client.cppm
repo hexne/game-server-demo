@@ -6,14 +6,13 @@
 module;
 #include <arpa/inet.h>
 #include <unistd.h>
-#include <string.h>
-#include <stdio.h>
 export module client;
 import log;
 import std;
 import std.compat;
 import net;
 import user;
+import message;
 
 export class Client {
 public:
@@ -23,11 +22,13 @@ public:
 std::optional<User>check_user_password(std::string_view number, std::string_view password) {
 
     auto hash = sha256(password);
-    auto msg = std::format("000000{}:{}", number, hash);
+    char msg[1024]{};
+    header::write(msg, header::type::login);
+
     Socket socket(Address{"127.0.0.1", 8080});
     socket.connect();
-    socket.send(std::span{msg.data(), msg.size()});
-
+    message::write(msg, header::type::login, std::format("{}:{}", number, hash));
+    socket.send(msg);
     char buf[1024]{};
     int n = socket.recv(std::span{buf, sizeof(buf)});
     std::string user_info(buf, n);
