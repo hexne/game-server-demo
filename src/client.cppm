@@ -32,7 +32,6 @@ std::optional<User> check_user_password(const std::string& number, const std::st
     char buf[1024]{};
     auto recv_msg = socket.recv(std::span{buf, sizeof(buf)});
     std::string user_info(recv_msg.begin(), recv_msg.end());
-    std::cout << user_info << std::endl;
     if (user_info == "err000") {
         Log().push_log("login error");
         return std::nullopt;
@@ -79,7 +78,7 @@ export void client_main() {
         auto id = user->id();
         timer.add_repeat_task([&socket, id] {
             send_heart(id, socket);
-        }, std::chrono::seconds{1});
+        }, std::chrono::seconds{5});
     }
     while (true)
         ;

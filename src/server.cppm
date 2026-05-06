@@ -40,7 +40,8 @@ void login(std::span<char> msg, TCP &socket) {
     else {
         auto send_msg = std::format("{}:{}:{}:{}", res[1], res[2], res[3], res[4]);
         socket.send(std::span{send_msg.data(), send_msg.size()});
-        redis.sadd("online_users", res[1]);
+        auto key = std::format("online:user:{}", res[1]);
+        redis.set(key, "1", std::chrono::seconds{15});
     }
 }
 
@@ -50,6 +51,8 @@ void heart(std::span<char> msg, TCP &socket) {
 
     int id{};
     std::memcpy(&id, msg.data(), sizeof(id));
+    auto key = std::format("online:user:{}", id);
+    redis.set(key, "1", std::chrono::seconds{15});
     Log().push_log(std::format("Server get {} heart", id));
 }
 std::map<header::type, std::function<void(std::span<char>, TCP&)>> events {
@@ -82,5 +85,19 @@ export void server_main() {
         if (msg.empty())
             break;
         distribute(msg, client);
+
+        std::vector<std::string> keys;
+        sw::redis::Cursor cursor = 0;
+        do {
+            cursor = redis.scan(cursor, "online:user:*", 10, std::back_inserter(keys));
+        } while (cursor != 0);
+
+        std::string online_users;
+        for (const auto& key : keys) {
+            if (!online_users.empty())
+                online_users += ", ";
+            online_users += key.substr(std::string{"online:user:"}.size());
+        }
+        Log().push_log(std::format("Online users: [{}]", online_users));
     }
 }
