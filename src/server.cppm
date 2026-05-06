@@ -65,14 +65,6 @@ Router events {
     { header::type::heart, heart }
 };
 
-// 分发事件，根据事件不同调用不同的函数
-void distribute(std::span<char> msg, TCP &socket) {
-    auto type = header::read(msg);
-    if (!events.contains(type))
-        throw std::invalid_argument("invalid server type");
-    events[type](msg.subspan(header::header_size()), socket);
-}
-
 export void server_main() {
     Log().push_log("Server start");
     TCP socket(Address {"0.0.0.0", 8080});
@@ -89,7 +81,11 @@ export void server_main() {
         auto msg = client.recv(buf);
         if (msg.empty())
             break;
-        distribute(msg, client);
+
+        auto type = header::read(msg);
+        if (!events.contains(type))
+            throw std::invalid_argument("invalid server type");
+        events[type](msg.subspan(header::header_size()), socket);
 
         std::vector<std::string> keys;
         sw::redis::Cursor cursor = 0;
