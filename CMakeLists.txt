@@ -23,3 +23,8 @@ add_executable(game-server-dev src/main.cpp)
 target_link_libraries(game-server-dev PRIVATE
         module
 )
+
+add_executable(manager src/test.cpp)
+target_link_libraries(manager PRIVATE
+        module
+)
