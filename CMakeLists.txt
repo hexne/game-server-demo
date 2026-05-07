@@ -24,7 +24,7 @@ target_link_libraries(game-server-dev PRIVATE
         module
 )
 
-add_executable(manager src/test.cpp)
+add_executable(manager src/manager.cpp)
 target_link_libraries(manager PRIVATE
         module
 )
