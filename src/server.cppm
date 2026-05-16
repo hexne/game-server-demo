@@ -27,7 +27,7 @@ public:
 };
 
 
-void login(std::span<char> msg, TCP &socket) {
+void login(std::span<char> msg, TCP *socket) {
     auto pos = std::ranges::find(msg, ':');
     if (pos == msg.end())
         throw std::invalid_argument("invalid server type");
@@ -58,22 +58,20 @@ void login(std::span<char> msg, TCP &socket) {
     if (!user) {
         char buf[header::header_size()]{};
         auto size = message::write(buf, header::type::login_err, {});
-        socket.send(std::span{buf, size});
+        socket->send_message(std::span{buf, size});
     }
     else {
         auto send_msg = std::format("{}:{}:{}:{}", (*user)[1], (*user)[2], (*user)[3], (*user)[4]);
         char buf[1024]{};
         auto size = message::write(buf, header::type::login_true, std::span{send_msg.data(), send_msg.size()});
-        socket.send(std::span{buf, size});
+        socket->send_message(std::span{buf, size});
 
         // 登录成功，直接注册到在线列表
         online_user_list.update(std::stoi((*user)[1]), Time::now());
     }
 }
 
-
-
-void heart(std::span<char> msg, TCP &socket) {
+void heart(std::span<char> msg, TCP *socket) {
     if (msg.size() != sizeof(int))
         throw std::invalid_argument("invalid heart message");
 
@@ -85,7 +83,7 @@ void heart(std::span<char> msg, TCP &socket) {
 }
 
 // server 的事件分发
-Router events {
+Router events_router {
     { header::type::login, login },
     { header::type::heart, heart }
 };
@@ -94,38 +92,74 @@ std::vector<std::unique_ptr<TCP>> clients;
 std::vector<std::jthread> client_threads;
 std::mutex clients_mutex;
 
-void handle_client(TCP& client) {
-    char buf[1024];
-    while (true) {
-        auto msg = client.recv(buf);
-        if (msg.empty())
-            break;
-
-        auto type = header::read(msg);
-        if (!events.contains(type))
-            throw std::invalid_argument("invalid server type");
-        events[type](msg.subspan(header::header_size()), client);
-    }
-}
+// void handle_client(TCP& client) {
+//     char buf[1024];
+//     while (true) {
+//         auto msg = client.recv(buf);
+//         if (msg.empty())
+//             break;
+//
+//         auto type = header::read(msg);
+//         if (!events.contains(type))
+//             throw std::invalid_argument("invalid server type");
+//         events[type](msg.subspan(header::header_size()), client);
+//     }
+// }
 
 export void server_main() {
     Log().push_log("Server start");
-    TCP socket(Address {"0.0.0.0", 8080});
 
-    socket.bind();
-    socket.listen();
+    Epoll epoll;
+    TCP server(Address("0.0.0.0", 8080));
+    server.bind();
+    server.listen();
 
+    epoll.add(server.fd(), epoll_in, &server);
+
+    std::unordered_map<int, std::unique_ptr<TCP>> clients;
+
+    epoll_event events[64];
     while (true) {
-        auto client = std::make_unique<TCP>(socket.accept());
-        auto client_ptr = client.get();
-        {
-            std::lock_guard lock(clients_mutex);
-            clients.emplace_back(std::move(client));
-            Log().push_log(std::format("Client connected: {}", clients.size()));
+        int n = epoll.wait(events, 64);
+
+        for (int i = 0;i < n; ++i) {
+            TCP *tcp = static_cast<TCP *>(events[i].data.ptr);
+
+            // 如果是监听者
+            if (tcp->is_listener()) {
+                TCP client = tcp->accept();
+                int client_fd = client.fd();
+                Log().push_log("Server accept a new connect");
+
+                clients[client_fd] = std::make_unique<TCP>(std::move(client));
+
+                epoll.add(client_fd, epoll_out | epoll_et, clients[client_fd].get());
+                continue;
+            }
+
+            // 如果是普通连接
+            if (events[i].events & epoll_in) {
+                tcp->readable();
+            }
+            if (events[i].events & epoll_out) {
+                tcp->writable();
+            }
+
+            while (auto msg = tcp->get_message()) {
+                if (!msg)
+                    return;
+                auto span = std::span{msg->data(), msg->size()};
+                auto type = header::read(span);
+                if (!events_router.contains(type))
+                    throw std::invalid_argument("invalid server type");
+                events_router[type](span.subspan(header::header_size()), tcp);
+            }
+
         }
 
-        client_threads.emplace_back([client_ptr] {
-            handle_client(*client_ptr);
-        });
+
     }
+
+
+
 }

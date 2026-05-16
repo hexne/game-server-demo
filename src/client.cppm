@@ -31,15 +31,16 @@ public:
         char msg[1024]{};
         auto login_msg = std::format("{}:{}", number, hash);
         auto msg_size = message::write(msg, header::type::login, std::span{login_msg.data(), login_msg.size()});
-        tcp_.send(std::span{msg, msg_size});
+        tcp_.send_message(std::span{msg, msg_size});
 
         char buf[1024]{};
-        auto recv_msg = tcp_.recv(std::span{buf, sizeof(buf)});
-        if (recv_msg.empty())
+        auto recv_msg = tcp_.get_message();
+        if (recv_msg->empty())
             return std::nullopt;
 
-        auto type = header::read(recv_msg);
-        auto payload = recv_msg.subspan(header::header_size());
+        auto span = std::span<char>{recv_msg->data(), recv_msg->size()};
+        auto type = header::read(span);
+        auto payload = span.subspan(header::header_size());
         if (type == header::type::login_err) {
             Log().push_log("login error");
             return std::nullopt;
@@ -77,14 +78,14 @@ public:
         char msg[1024]{};
         auto register_msg = std::format("{}:{}:{}", name, number, password_hash);
         auto msg_size = message::write(msg, header::type::register_user, std::span{register_msg.data(), register_msg.size()});
-        tcp_.send(std::span{msg, msg_size});
+        tcp_.send_message(std::span{msg, msg_size});
     }
 
     void send_heart(int id) {
         char buf[16]{};
         auto id_span = std::span{reinterpret_cast<char*>(&id), sizeof(id)};
         auto size = message::write(buf, header::type::heart, id_span);
-        tcp_.send(std::span{buf, size});
+        tcp_.send_message(std::span{buf, size});
     }
 
 };

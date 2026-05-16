@@ -74,6 +74,10 @@ class Socket {
             fd_ = -1;
         }
     }
+    void set_nonblocking() {
+        int flags = fcntl(fd_, F_GETFL, 0);
+        fcntl(fd_, F_SETFL, flags | O_NONBLOCK);
+    }
 
 public:
     Socket() {
@@ -81,17 +85,20 @@ public:
         if (fd_ < 0) {
             throw std::runtime_error(std::string("socket failed: ") + std::strerror(errno));
         }
+        set_nonblocking();
     }
     explicit Socket(const int fd) : fd_(fd) {
         if (fd_ < 0) {
             throw std::invalid_argument("invalid socket fd");
         }
+        set_nonblocking();
     }
     explicit Socket(const Address &addr) : addr_(addr) {
         fd_ = ::socket(AF_INET, SOCK_STREAM, 0);
         if (fd_ < 0) {
             throw std::runtime_error(std::string("socket failed: ") + std::strerror(errno));
         }
+        set_nonblocking();
     }
 
     Socket(const Socket&) = delete;
@@ -109,16 +116,20 @@ public:
         return *this;
     }
 
+    int fd() const {
+        return fd_;
+    }
+
     auto connect() {
         return ::connect(fd_, addr_.socket_address(), addr_.size());
     }
     auto bind() {
         return ::bind(fd_, addr_.socket_address(), addr_.size());
     }
-    auto listen() {
-        return ::listen(fd_, 5);
+    auto listen(int backlog = 128) const {
+        return ::listen(fd_, backlog);
     }
-    auto accept() {
+    auto accept() const {
         auto fd = ::accept(fd_, nullptr, nullptr);
         if (fd >= 0)
             return Socket(fd);
@@ -195,93 +206,184 @@ public:
     }
 };
 
-export class TCP {
-    using length_type = std::uint32_t;
-
-    Socket socket_;
-    static constexpr length_type max_message_size_ = 64 * 1024;
-
-    explicit TCP(Socket socket) : socket_(std::move(socket)) {}
-
-    void write_exact(std::span<char> span) {
-        while (!span.empty()) {
-            auto n = socket_.send(span);
-            if (n < 0) {
-                if (errno == EINTR)
-                    continue;
-                throw std::runtime_error(std::string("send failed: ") + std::strerror(errno));
-            }
-            if (n == 0)
-                throw std::runtime_error("send failed: connection closed");
-            span = span.subspan(static_cast<std::size_t>(n));
-        }
-    }
-
-    bool read_exact(std::span<char> span) {
-        while (!span.empty()) {
-            auto n = socket_.recv(span);
-            if (n < 0) {
-                if (errno == EINTR)
-                    continue;
-                throw std::runtime_error(std::string("recv failed: ") + std::strerror(errno));
-            }
-            if (n == 0)
-                return false;
-            span = span.subspan(static_cast<std::size_t>(n));
-        }
-        return true;
-    }
-
+export class Epoll {
+    int fd_;
 public:
-
-    TCP() = default;
-    explicit TCP(Address addr) : socket_(addr) {}
-
-    auto connect() {
-        return socket_.connect();
+    Epoll() {
+        fd_ = epoll_create1(0);
+        if (fd_ < 0)
+            throw std::runtime_error("epoll_create1 failed");
     }
 
-    auto bind() {
-        return socket_.bind();
+    void add(int fd, uint32_t events, void *ptr) {
+        epoll_event ev{};
+        ev.events = events;
+        ev.data.ptr = ptr;
+        if (epoll_ctl(fd_, EPOLL_CTL_ADD, fd, &ev) < 0)
+            throw std::runtime_error("epoll add failed");
     }
 
-    auto listen() {
-        return socket_.listen();
+    void mod(int fd, uint32_t events, void* ptr) {
+        epoll_event ev{};
+        ev.events = events;
+        ev.data.ptr = ptr;
+        if (epoll_ctl(fd_, EPOLL_CTL_MOD, fd, &ev) < 0)
+            throw std::runtime_error("epoll mod failed");
     }
 
-    auto accept() {
-        return TCP(socket_.accept());
+    void del(int fd) {
+        epoll_ctl(fd_, EPOLL_CTL_DEL, fd, nullptr);
     }
 
-    void send(std::span<char> msg) {
-        if (msg.size() > max_message_size_)
-            throw std::runtime_error("message too large");
-
-        auto len = static_cast<length_type>(msg.size());
-        auto len_span = std::span{reinterpret_cast<char*>(&len), sizeof(len)};
-        write_exact(len_span);
-        write_exact(msg);
-    }
-
-    std::span<char> recv(std::span<char> buf) {
-        length_type net_len{};
-        auto len_span = std::span{reinterpret_cast<char*>(&net_len), sizeof(net_len)};
-        if (!read_exact(len_span))
-            return {};
-
-        auto len = net_len;
-        if (len > max_message_size_)
-            throw std::runtime_error("message too large");
-
-        if (len > buf.size())
-            throw std::runtime_error("receive buffer too small");
-
-        auto msg = buf.first(static_cast<std::size_t>(len));
-        if (!read_exact(msg))
-            return {};
-        return msg;
+    int wait(epoll_event *events, int max, int timeout = -1) {
+        return epoll_wait(fd_, events, max, timeout);
     }
 
 };
+
+export class TCP {
+    Socket socket_;
+    std::vector<char> read_buf_;
+    std::vector<char> write_buf_;
+    bool is_listener_ = false;
+
+public:
+    TCP() = default;
+
+    explicit TCP(const Address& addr)
+        : socket_(addr) {}
+
+    // 用于 accept() 返回的 Socket
+    explicit TCP(Socket&& s)
+        : socket_(std::move(s)) {}
+
+    TCP(TCP &&) noexcept = default;
+
+    [[nodiscard]] int fd() const { return socket_.fd(); }
+
+    int connect() { return socket_.connect(); }
+    int bind()    { return socket_.bind(); }
+
+    [[nodiscard]] bool is_listener() const {
+        return is_listener_;
+    }
+    int listen(int backlog = 128) {
+        is_listener_ = true;
+        return socket_.listen(backlog);
+    }
+
+    TCP accept() const {
+        Socket s = socket_.accept();
+        return TCP(std::move(s));
+    }
+
+    // -------------------------
+    // 可读事件
+    // -------------------------
+    void readable() {
+        if (is_listener_)
+            return;
+
+        char buf[4096];
+
+        while (true) {
+            int n = socket_.recv(std::span<char>(buf, sizeof(buf)));
+
+            if (n > 0) {
+                read_buf_.insert(read_buf_.end(), buf, buf + n);
+            }
+            else if (n == -1 && errno == EAGAIN) {
+                break; // 读完了
+            }
+            else {
+                close();
+                break;
+            }
+        }
+    }
+
+    // -------------------------
+    // 可写事件
+    // -------------------------
+    void writable() {
+        while (!write_buf_.empty()) {
+            int n = socket_.send(std::span<char>(write_buf_.data(), write_buf_.size()));
+
+            if (n > 0) {
+                write_buf_.erase(write_buf_.begin(), write_buf_.begin() + n);
+            }
+            else if (n == -1 && errno == EAGAIN) {
+                break; // 下次再写
+            }
+            else {
+                close();
+                break;
+            }
+        }
+    }
+
+    // -------------------------
+    // 外部状态机拉取完整包
+    // -------------------------
+    std::optional<std::vector<char>> get_message() {
+        using length_type = int;
+
+        if (read_buf_.size() < sizeof(length_type))
+            return std::nullopt;
+
+        length_type len{};
+        std::memcpy(&len, read_buf_.data(), sizeof(len));
+
+        if (read_buf_.size() < sizeof(len) + len)
+            return std::nullopt;
+
+        std::vector<char> msg(len);
+        std::memcpy(msg.data(), read_buf_.data() + sizeof(len), len);
+
+        read_buf_.erase(read_buf_.begin(),
+                        read_buf_.begin() + sizeof(len) + len);
+
+        return msg;
+    }
+
+    // -------------------------
+    // 发送消息（自动进入 write_buf_）
+    // -------------------------
+    void send_message(std::span<const char> msg) {
+        using length_type = int;
+
+        length_type len = msg.size();
+
+        write_buf_.insert(write_buf_.end(),
+                          reinterpret_cast<const char*>(&len),
+                          reinterpret_cast<const char*>(&len) + sizeof(len));
+
+        write_buf_.insert(write_buf_.end(), msg.begin(), msg.end());
+    }
+
+    // -------------------------
+    // 关闭连接
+    // -------------------------
+    void close() {
+        socket_ = Socket(); // 旧 socket 自动析构并 close fd
+        read_buf_.clear();
+        write_buf_.clear();
+    }
+
+    ~TCP() {
+        close();
+    }
+};
+
+export {
+    constexpr int epoll_in = EPOLLIN;
+    constexpr int epoll_out = EPOLLOUT;
+    constexpr int epoll_et = EPOLLET;
+}
+
+export {
+    using ::epoll_event;
+}
+
 
 export using ::ssize_t;
