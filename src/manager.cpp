@@ -5,7 +5,7 @@ import range;
 
 
 class ClientManager {
-    std::unordered_map<int, std::unique_ptr<Client>> users_;
+    std::map<int, std::unique_ptr<Client>> users_;
     Epoll epoll_;
     bool stop_{};
 public:
@@ -20,10 +20,11 @@ public:
 
     void show() {
         std::println("{:^10}{:^10}{:^20}{:^20}{:^20}", "index", "fd", "id", "name", "status");
-        for (int i = 1;i <= users_.size(); ++i) {
-            auto &client = users_[i];
+        for (auto &[index, client] : users_) {
+            std::println("{:^10}{:^10}",
+                index,
+                client->fd());
 
-            // std::println("{:^10}{:^10}{:^20}{:^20}{:^20}", i, user.fd, user.id, user.name, user.status);
         }
         // for (auto &[fd, user] : users_) {
             // std::println("{:^10}{:^10}{:^20}{:^20}{:^20}", fd, "/", user.name, "/");
@@ -31,14 +32,16 @@ public:
     }
 
     void add(int number = 1) {
-        static int index = 1;
-        for (auto i : Range(number)) {
+        static int index{};
+        for (int i : Range(number)) {
             auto client = std::make_unique<Client>(Address{"127.0.0.1", 8080});
             int fd = client->fd();
-            // users_.insert(std::make_pair(index , get_account(index)));
-            // index += 1;
+            epoll_.add(fd, epoll_in | epoll_out | epoll_et, client.get());
+            users_.emplace(index ++, std::move(client));
+            std::println("add client fd={}", fd);
         }
     }
+
 
     void stop() {
         stop_ = true;
@@ -54,7 +57,6 @@ void epoll_thread() {
 
 
 int main(int argc, char *argv[]) {
-    // std::thread thread(show_user_status);
     ClientManager manager;
     std::jthread thread(&ClientManager::epoll_loop, &manager);
 

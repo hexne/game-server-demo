@@ -22,7 +22,7 @@ export class Client {
     Timer timer_;
 
 public:
-    explicit Client(Address address = Address{"127.0.0.1", 8080}) : tcp_(std::move(address)) {
+    explicit Client(const Address &address) : tcp_(std::move(address)) {
         auto res = tcp_.connect();
         Log().push_log(std::format("connect res : {}", res));
         if (res == -1 && errno != EINPROGRESS) {
@@ -105,7 +105,7 @@ public:
 export void client_main() {
     sleep(1);
     Log().push_log("Client start");
-    Client client;
+    Client client(Address{"127.0.0.1", 8080});
     Log().push_log("Client init");
     client.login("num10", "pass10");
 
