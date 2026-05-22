@@ -40,6 +40,7 @@ export class Client {
 
         infos[3] = user_info.substr(start);
         user_ = User(infos[0], infos[1], infos[2], infos[3]);
+        user_->status(UserStatus::online);
         Log().push_log("login ok");
 
         auto id = user_->id();
@@ -102,6 +103,11 @@ public:
         if (user_ == std::nullopt)
             return std::string{};
         return user_->number();
+    }
+    auto user_status() {
+        if (user_ == std::nullopt)
+            return std::string{};
+        return user_->status();
     }
 
     auto rounter(std::span<char> msg) {

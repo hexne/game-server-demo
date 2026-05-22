@@ -13,6 +13,7 @@ else()
     set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "451f2fe2-a8a2-47c3-bc32-94786d8fc91b")
 endif()
 set(CMAKE_CXX_MODULE_STD 1)
+add_compile_options(-freflection)
 
 project(game-server-dev)
 
