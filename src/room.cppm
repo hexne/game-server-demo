@@ -7,37 +7,48 @@ module;
 export module room;
 import std;
 
-// // 房间
-// enum class RoomStatus {
-//     free,
-//     match,
-//     gaming
-// };
+// 房间
+enum class RoomStatus {
+    free,
+    matching,
+    battle
+};
 // export class RoomList;
-// export class Room {
-//     int room_id{};
-//     std::vector<int> users_{};
-//     RoomStatus status{};
-//     friend class RoomList;
-// public:
-//     explicit Room(const int id) : room_id(id) {  }
-//     void add_user(const int id) {
-//         if (std::ranges::find(users_, id) == users_.end())
-//             users_.push_back(id);
-//     }
-//     void remove_user(const int id) {
-//         if (const auto it = std::ranges::find(users_, id); it != users_.end()) {
-//             std::swap(*it, users_.back());
-//             users_.pop_back();
-//         }
-//     }
-//     void start_match() {
-//
-//     }
-//
-//     void stop_match() {
-//     }
-// };
+export class Room {
+    int id_{};
+    std::vector<int> users_{};
+    RoomStatus status = RoomStatus::free;
+    friend class RoomList;
+public:
+    static Room create_room() {
+        static int id{};
+        Room room(id ++);
+        return room;
+    }
+
+    explicit Room(const int id) : id_(id) {  }
+    void add_user(const int id) {
+        if (std::ranges::find(users_, id) == users_.end())
+            users_.push_back(id);
+    }
+    void remove_user(const int id) {
+        if (const auto it = std::ranges::find(users_, id); it != users_.end()) {
+            std::swap(*it, users_.back());
+            users_.pop_back();
+        }
+    }
+    void start_match() {
+
+    }
+
+    void stop_match() {
+
+    }
+
+    bool operator < (const Room &that) const {
+        return id_ < that.id_;
+    }
+};
 //
 //
 // class RoomList {

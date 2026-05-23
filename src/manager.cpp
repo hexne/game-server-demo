@@ -40,15 +40,16 @@ public:
     }
 
     void show() {
-        std::println("{:^10}{:^10}{:^20}{:^20}{:^20}{:^20}", "index", "fd", "id", "name", "number", "status");
+        std::println("{:^10}{:^10}{:^10}{:^20}{:^20}{:^20}{:^5}", "index", "fd", "id", "name", "number", "status", "room");
         for (auto &[index, client] : users_) {
-            std::println("{:^10}{:^10}{:^20}{:^20}{:^20}{:^20}",
+            std::println("{:^10}{:^10}{:^10}{:^20}{:^20}{:^20}{:^5}",
                 index,
                 client->fd(),
                 client->user_id(),
                 client->user_name(),
                 client->user_number(),
-                client->user_status()
+                client->user_status(),
+                client->room_id()
             );
 
         }
@@ -79,6 +80,16 @@ public:
             auto back = std::to_string(index + 1);
             client->login(std::format("num{}", back),
                 std::format("pass{}", back));
+        }
+    }
+
+    void create_room(std::vector<int> &indexs) {
+        if (indexs.empty())
+            return;
+
+        for (auto index : indexs) {
+            auto &client = users_[index];
+            client->create_room();
         }
     }
 
@@ -166,12 +177,29 @@ int main(int argc, char *argv[]) {
             }
             // login 0
             // login 0 2 5
-            else if (arg.find(',')) {
+            else if (!command.args.empty()) {
                 for (auto arg : command.args) {
                     indexs.push_back(std::stoi(arg));
                 }
             }
             manager.login(indexs);
+        }
+        // room 所有用户各自进入一个房间
+        // room 0 用户0进入房间
+        // room 0 1 2 3 4 0-4 进入同一个房间
+        else if (command.cmd == "room") {
+            // 所有用户各自进入一个房间
+            if (command.args.empty()) {
+
+            }
+            else {
+                std::vector<int> indexs{};
+                for (auto arg : command.args) {
+                    indexs.push_back(std::stoi(arg));
+                }
+                manager.create_room(indexs);
+            }
+
         }
 
         std::print(":");

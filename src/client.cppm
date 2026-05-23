@@ -18,10 +18,17 @@ import timer;
 
 export class Client {
     std::optional<User> user_;
+    std::optional<int> room_;
     TCP tcp_;
     Timer timer_;
+    std::map<header::type, void (Client::*)(std::span<char>)> rounter_ = {
+        { header::type::login_true, &Client::login_true },
+        { header::type::login_false, &Client::login_false },
+        { header::type::room_create_true, &Client::create_room_true },
 
-    void login_error(std::span<char> msg) {
+    };
+
+    void login_false(std::span<char> msg) {
         Log().push_log("login error");
     }
     void login_true(std::span<char> msg) {
@@ -49,6 +56,16 @@ export class Client {
         }, std::chrono::seconds{5});
 
     }
+
+    // 联网的只需要
+    void create_room_true(std::span<char> msg) {
+        int room_id{};
+        std::memcpy(&room_id, msg.data(), sizeof(int));
+        room_ = room_id;
+    }
+    // user_to_room_true
+    // user_to_room_false
+
 
 public:
     explicit Client(const Address &address) : tcp_(std::move(address)) {
@@ -85,7 +102,7 @@ public:
         char buf[16]{};
         auto id_span = std::span{reinterpret_cast<char*>(&id), sizeof(id)};
         auto size = message::write(buf, header::type::heart, id_span);
-        tcp_.send_message(std::span{buf, size});
+        tcp_.send_now(std::span{buf, size});
     }
 
     auto user_id() {
@@ -109,21 +126,32 @@ public:
             return std::string{};
         return user_->status();
     }
+    auto room_id() {
+        if (room_ == std::nullopt)
+            return std::string{};
+        return std::to_string(room_.value());
+    }
+
+    // 创建房间 发送一个room_create user_id,
+    // 让服务器创建房间，把user_id加进去，然后返回 room_create_true room_id即可
+    // 或者room_create_false即可
+    void create_room() {
+        if (user_ == std::nullopt)
+            return;
+        char msg[1024]{};
+        std::string id = std::to_string(user_->id());
+        auto size = message::write(msg, header::type::room_create, std::span{id});
+        tcp_.send_now(std::span{msg, size});
+    }
 
     auto rounter(std::span<char> msg) {
-        std::println("in rounter");
         auto header = header::read(msg);
         auto context = msg.subspan(header::header_size());
 
-        switch (header) {
-        case header::type::login_true:
-            login_true(context);
-            break;
-        case header::type::login_err:
-            login_error(context);
-            break;
-        }
+        if (!rounter_.contains(header))
+            return;
 
+        (this->*rounter_[header])(context);
     }
 
     auto &tcp() {

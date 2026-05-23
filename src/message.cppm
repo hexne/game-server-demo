@@ -13,8 +13,8 @@ export namespace header {
     enum class type : header_type {
         // 登录相关
         login,
-        login_err,
         login_true,
+        login_false,
         register_user,
         logout,
 
@@ -26,6 +26,8 @@ export namespace header {
 
         // 房间
         room_create,
+        room_create_true,
+
         room_join,
         room_leave,
         room_info,

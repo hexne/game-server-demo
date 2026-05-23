@@ -11,6 +11,7 @@ import database;
 import message;
 import online_user;
 import time;
+import room;
 import std;
 
 
@@ -18,8 +19,9 @@ Database db("root", "123456", "game");
 std::mutex db_mutex;
 
 OnlineUserList online_user_list([](int id) {
-    
 });
+
+std::set<std::shared_ptr<Room>> online_rooms;
 
 export class Server {
 public:
@@ -57,7 +59,7 @@ void login(std::span<char> msg, TCP *socket) {
 
     if (!user) {
         char buf[header::header_size()]{};
-        auto size = message::write(buf, header::type::login_err, {});
+        auto size = message::write(buf, header::type::login_false, {});
         socket->send_now(std::span{buf, size});
         std::cout << "send_message" << std::endl;
     }
@@ -81,13 +83,29 @@ void heart(std::span<char> msg, TCP *socket) {
     std::memcpy(&id, msg.data(), sizeof(id));
 
     online_user_list.update(id, Time::now());
-    Log().push_log(std::format("Server get {} heart", id));
+    // Log().push_log(std::format("Server get {} heart", id));
 }
+void create_room(std::span<char> msg, TCP *socket) {
+    std::string id(msg.data(), msg.size());
+
+    // 创建一个room, 将id放到这个room中
+    auto room = std::make_shared<Room>(Room::create_room());
+    online_rooms.insert(room);
+    auto it = online_rooms.find(room);
+    it->get()->add_user(std::stoi(id));
+
+    char buf[1024]{};
+    auto size = message::write(buf, header::type::room_create_true, {});
+    socket->send_now(std::span{buf, size});
+}
+
+
 
 // server 的事件分发
 Router events_router {
     { header::type::login, login },
-    { header::type::heart, heart }
+    { header::type::heart, heart },
+    { header::type::room_create, create_room },
 };
 
 std::vector<std::unique_ptr<TCP>> clients;
