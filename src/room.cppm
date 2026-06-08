@@ -13,20 +13,25 @@ enum class RoomStatus {
     matching,
     battle
 };
-// export class RoomList;
+
+// 一个房间号
+// 一个房主
+// 一个其他用户列表
+//
 export class Room {
     int id_{};
+    int master_{};
     std::vector<int> users_{};
     RoomStatus status = RoomStatus::free;
     friend class RoomList;
 public:
-    static Room create_room() {
+    static Room create_room(const int master) {
         static int id{};
-        Room room(id ++);
+        Room room(id ++, master);
         return room;
     }
 
-    explicit Room(const int id) : id_(id) {  }
+    explicit Room(const int id, const int master) : id_(id), master(master) {  }
     void add_user(const int id) {
         if (std::ranges::find(users_, id) == users_.end())
             users_.push_back(id);

@@ -29,6 +29,7 @@ public:
 };
 
 
+// login "number"
 void login(std::span<char> msg, TCP *socket) {
     auto pos = std::ranges::find(msg, ':');
     if (pos == msg.end())
@@ -72,6 +73,7 @@ void login(std::span<char> msg, TCP *socket) {
     }
 }
 
+// heart <id>
 void heart(std::span<char> msg, TCP *socket) {
     if (msg.size() != sizeof(int))
         throw std::invalid_argument("invalid heart message");
@@ -82,21 +84,30 @@ void heart(std::span<char> msg, TCP *socket) {
     online_user_list.update(id, Time::now());
     // Log().push_log(std::format("Server get {} heart", id));
 }
+
+// create_room "user_id"
 void create_room(std::span<char> msg, TCP *socket) {
-    std::string user_id(msg.data(), msg.size());
+    int user_id = std::stoi(std::string(msg.data(), msg.size()));
 
     // 创建一个room, 将id放到这个room中
-    auto room = std::make_shared<Room>(Room::create_room());
+    auto room = std::make_shared<Room>(Room::create_room(user_id));
     online_rooms.insert(room);
-    auto it = online_rooms.find(room);
-    it->get()->add_user(std::stoi(user_id));
+    // auto it = online_rooms.find(room);
+    // it->get()->add_user(user_id);
 
-    int room_id = it->get()->id();
-    auto room_id_str = std::to_string(room_id);
+    // int room_id = it->get()->id();
+    auto room_id_str = std::to_string(room->id());
 
     char buf[1024]{};
     auto size = message::write(buf, header::type::room_create_true, std::span{room_id_str.data(), room_id_str.size()});
     socket->send_now(std::span{buf, size});
+}
+
+// invite "user_id1" "user_id2"
+// user1 invite user2, 需要先找到user1 在哪个房间？？？
+void invite_room(std::span<char> msg, TCP *socket) {
+
+
 }
 
 

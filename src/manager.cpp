@@ -1,5 +1,4 @@
 #include <cerrno>
-#include <cstring>
 import std;
 import client;
 import net;
@@ -83,6 +82,12 @@ public:
         }
     }
 
+    // 邀请别人进入自己房间
+    void invite(std::vector<int> &indexs) {
+
+
+    }
+
     void create_room(std::vector<int> &indexs) {
         if (indexs.empty())
             return;
@@ -129,6 +134,9 @@ struct Command {
 
         return is;
     }
+    static void end() {
+        std::print(">>");
+    }
 };
 
 
@@ -138,7 +146,7 @@ int main(int argc, char *argv[]) {
 
     Command command;
 
-    std::print(":");
+    command.end();
     while (std::cin >> command) {
         if (command.cmd == "quit" || command.cmd == "q" || command.cmd == "exit") {
             manager.stop();
@@ -161,6 +169,7 @@ int main(int argc, char *argv[]) {
             // login
             if (command.args.empty()) {
                 manager.login(indexs);
+                command.end();
                 continue;
             }
             auto arg = command.args.front();
@@ -201,8 +210,7 @@ int main(int argc, char *argv[]) {
             }
 
         }
-
-        std::print(":");
+        command.end();
     }
     thread.join();
 

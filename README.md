@@ -1,5 +1,39 @@
 # Game Server Demo
 
+# Manager 命令
+- [x] add 添加客户端
+  - [x] add number, 添加number个客户端
+- [x] login 客户端登录
+  - [x] login 无参数时全部登录
+  - [x] login index, index客户端登录
+
+# Client与Server通讯时的消息格式
+格式介绍：  
+>> number 账号  
+>> id 用户id  
+>> room_id 房间id  
+>> \<number\> 表示数字  
+>> "string" 表示字符串  
+>> "" 空，无内容  
+
+### 心跳  
+heart \<id>
+
+### 登录
+login "number"
+>> login_ok "id" "name" "number" "create_time"  
+>> login_false ""
+
+### 创建房间
+room_create "user_id"
+>> room_create_true "room_id"
+
+### 邀请用户进入房间
+room_invite \<room_id> \<id1> \<id2> user1邀请user2进入room_id
+>> room_invite_true  
+>> room_invite_false  
+
+
 ## 📌 功能进度
 
 - [x] 封装网络库

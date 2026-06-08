@@ -28,7 +28,14 @@ export namespace header {
         room_create,
         room_create_true,
 
-        room_join,
+        // 邀请进入房间
+        room_invite,
+        room_invite_true,   // 对方同意
+        room_invite_false,  // 对方拒绝
+
+        // @TODO 同意房间邀请
+        // @TODO 拒绝房间邀请
+
         room_leave,
         room_info,
 
