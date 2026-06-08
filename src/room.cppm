@@ -31,7 +31,7 @@ public:
         return room;
     }
 
-    explicit Room(const int id, const int master) : id_(id), master(master) {  }
+    explicit Room(const int id, const int master) : id_(id), master_(master) {  }
     void add_user(const int id) {
         if (std::ranges::find(users_, id) == users_.end())
             users_.push_back(id);

@@ -78,8 +78,7 @@ void heart(std::span<char> msg, TCP *socket) {
     if (msg.size() != sizeof(int))
         throw std::invalid_argument("invalid heart message");
 
-    int id{};
-    std::memcpy(&id, msg.data(), sizeof(id));
+    int id = message::read(msg);
 
     online_user_list.update(id, Time::now());
     // Log().push_log(std::format("Server get {} heart", id));

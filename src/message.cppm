@@ -73,9 +73,18 @@ export namespace message {
         return sizeof(v) + msg.size();
     }
 
-
-
-
+    char *write(char *buf, int number) {
+        std::memcpy(buf, &number, sizeof(number));
+        return buf + sizeof(number);
+    }
+    int read(char *buf) {
+        int number;
+        std::memcpy(&number, buf, sizeof(number));
+        return number;
+    }
+    int read(std::span<char> span) {
+        return read(span.data());
+    }
 
 }
 
